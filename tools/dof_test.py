@@ -1,8 +1,8 @@
 import cv2, numpy as np, sys, itertools
 
-PAIRS = [("frames/pair_a0.jpg","frames/pair_a1.jpg"),
-         ("frames/pair_b0.jpg","frames/pair_b1.jpg"),
-         ("frames/pair_c0.jpg","frames/pair_c1.jpg")]
+PAIRS = [("data/derived/frames/pair_a0.jpg","data/derived/frames/pair_a1.jpg"),
+         ("data/derived/frames/pair_b0.jpg","data/derived/frames/pair_b1.jpg"),
+         ("data/derived/frames/pair_c0.jpg","data/derived/frames/pair_c1.jpg")]
 
 # background band: above the spectator/car line is static scenery
 BAND = (0, 430)
