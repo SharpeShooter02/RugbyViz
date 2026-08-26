@@ -1,0 +1,27 @@
+# Large / regenerable data: never commit.
+# NOTE: comments must be on their own line — git does not support
+# trailing comments after a pattern.
+data/video/
+data/derived/
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.ipynb_checkpoints/
+
+# Model weights (redownloadable)
+*.pt
+*.onnx
+*.engine
+
+# OS / editor
+Thumbs.db
+desktop.ini
+.DS_Store
+.vscode/
+.idea/
+
+# config/ is deliberately NOT ignored.
+# Calibration files are small and represent manual human work -> track them.
