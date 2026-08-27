@@ -1,4 +1,4 @@
-"""Click known pitch landmarks on the mosaic to solve the mosaic -> pitch homography.
+r"""Click known pitch landmarks on the mosaic to solve the mosaic -> pitch homography.
 
 Run:
     .\.venv\Scripts\python.exe tools\calibrate_pitch.py
@@ -180,11 +180,14 @@ class Viewer:
         cv2.rectangle(canvas, (0, 0), (VIEW_W, 78), (0, 0, 0), -1)
         if idx < len(LANDMARKS):
             lbl, lx, ly = LANDMARKS[idx]
-            cv2.putText(canvas, f"CLICK:  {lbl}", (16, 30),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.85, (0, 255, 255), 2)
+            done = any(p[2] == lbl for p in points)
+            head = f"{'ALREADY PLACED - click only to move it:' if done else 'CLICK:'}  {lbl}"
+            cv2.putText(canvas, head, (16, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.72,
+                        (120, 255, 120) if done else (0, 255, 255), 2)
             cv2.putText(canvas, f"pitch coords ({lx:.0f} m, {ly:.0f} m)   "
                                 f"[{idx+1}/{len(LANDMARKS)}]   placed: {len(points)}"
-                                f"   zoom {self.scale:.2f}x",
+                                f"   zoom {self.scale:.2f}x   "
+                                f"{'n=keep and move on' if done else 'n=skip'}",
                         (16, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (200, 200, 200), 1)
         else:
             cv2.putText(canvas, f"All landmarks done - {len(points)} placed. "
@@ -230,8 +233,13 @@ def main() -> None:
         if event == cv2.EVENT_LBUTTONDOWN and idx < len(LANDMARKS):
             mx, my = v.view_to_img(x, y)
             lbl, px, py = LANDMARKS[idx]
+            # One point per landmark: clicking a landmark that already has one
+            # replaces it rather than adding a duplicate.
+            was = any(p[2] == lbl for p in points)
+            points[:] = [p for p in points if p[2] != lbl]
             points.append((mx, my, lbl, px, py))
-            print(f"  placed {lbl:<34} mosaic=({mx:8.1f},{my:8.1f})  pitch=({px:5.1f},{py:5.1f})")
+            print(f"  {'replaced' if was else 'placed  '} {lbl:<34} "
+                  f"mosaic=({mx:8.1f},{my:8.1f})  pitch=({px:5.1f},{py:5.1f})")
             idx += 1
         elif event == cv2.EVENT_RBUTTONDOWN:
             v.dragging = True
@@ -266,13 +274,22 @@ def main() -> None:
         if k in (ord("n"), ord(" ")) and idx < len(LANDMARKS):
             print(f"  skipped {LANDMARKS[idx][0]}")
             idx += 1
-        elif k == ord("u") and points:
-            removed = points.pop()
-            idx = max(0, idx - 1)
-            # step back to the landmark that was undone
-            while idx > 0 and LANDMARKS[idx][0] != removed[2]:
-                idx -= 1
-            print(f"  undid {removed[2]}")
+        elif k == ord("u"):
+            # Step back to the nearest EARLIER landmark that actually has a
+            # point, and remove that one. Popping the end of the list is wrong
+            # once points have been loaded from a saved session, because list
+            # order no longer tracks landmark order.
+            labels = {p[2] for p in points}
+            j = idx - 1
+            while j >= 0 and LANDMARKS[j][0] not in labels:
+                j -= 1
+            if j < 0:
+                print("  nothing to undo before this landmark")
+            else:
+                lbl = LANDMARKS[j][0]
+                points[:] = [p for p in points if p[2] != lbl]
+                idx = j
+                print(f"  undid {lbl}  (re-click it, or 'n' to leave it unplaced)")
         elif k == ord("s"):
             if len(points) < 4:
                 print(f"  need at least 4 points, have {len(points)}")
