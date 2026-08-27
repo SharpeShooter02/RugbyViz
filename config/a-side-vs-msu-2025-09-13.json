@@ -1,0 +1,186 @@
+{
+  "match": "a-side-vs-msu-2025-09-13",
+  "created": "2026-08-26T23:52:28",
+  "pitch_length_m": 100.0,
+  "pitch_width_m": 70.0,
+  "mosaic_size": [
+    11407,
+    2794
+  ],
+  "mosaic_to_pitch": [
+    [
+      -0.009464212298361752,
+      -0.07093651487148353,
+      100.96152770866016
+    ],
+    [
+      0.00020221544466462495,
+      -0.11112083537215381,
+      94.90834615417147
+    ],
+    [
+      1.01688402714752e-05,
+      -0.0014286055005859717,
+      1.0
+    ]
+  ],
+  "points": [
+    {
+      "mosaic": [
+        6616.061953967395,
+        951.5332866778833
+      ],
+      "pitch": [
+        100.0,
+        32.2
+      ],
+      "label": "RIGHT goalpost - FAR-side post base",
+      "residual_m": 0.3449586782930115,
+      "inlier": true
+    },
+    {
+      "mosaic": [
+        6832.479918127838,
+        981.2272432109576
+      ],
+      "pitch": [
+        100.0,
+        37.8
+      ],
+      "label": "RIGHT goalpost - NEAR-side post base",
+      "residual_m": 0.5984649535230407,
+      "inlier": true
+    },
+    {
+      "mosaic": [
+        3503.4493862830836,
+        954.6013888569818
+      ],
+      "pitch": [
+        0.0,
+        32.2
+      ],
+      "label": "LEFT goalpost - FAR-side post base",
+      "residual_m": 0.42053160940092155,
+      "inlier": true
+    },
+    {
+      "mosaic": [
+        3228.23551443152,
+        993.1240287455067
+      ],
+      "pitch": [
+        0.0,
+        37.8
+      ],
+      "label": "LEFT goalpost - NEAR-side post base",
+      "residual_m": 0.5450162735512587,
+      "inlier": true
+    },
+    {
+      "mosaic": [
+        5152.925546459565,
+        862.2703272403443
+      ],
+      "pitch": [
+        50.0,
+        0.0
+      ],
+      "label": "halfway  x  FAR touchline",
+      "residual_m": 0.7475968827702932,
+      "inlier": true
+    },
+    {
+      "mosaic": [
+        5643.9655420005465,
+        862.7003561145854
+      ],
+      "pitch": [
+        78.0,
+        0.0
+      ],
+      "label": "RIGHT 22 x  FAR touchline",
+      "residual_m": 1.0607576215433658,
+      "inlier": true
+    },
+    {
+      "mosaic": [
+        4503.04958758215,
+        894.0984684630297
+      ],
+      "pitch": [
+        22.0,
+        15.0
+      ],
+      "label": "LEFT 22  x  FAR 15m dashed line",
+      "residual_m": 0.27017762325755934,
+      "inlier": true
+    },
+    {
+      "mosaic": [
+        5153.074741691448,
+        872.0906345388851
+      ],
+      "pitch": [
+        50.0,
+        5.0
+      ],
+      "label": "halfway  x  FAR 5m dashed line",
+      "residual_m": 0.05455195795203393,
+      "inlier": true
+    },
+    {
+      "mosaic": [
+        4602.2318232358475,
+        872.1796242735348
+      ],
+      "pitch": [
+        22.0,
+        5.0
+      ],
+      "label": "LEFT 22  x  FAR 5m dashed line",
+      "residual_m": 0.5830787703170677,
+      "inlier": true
+    },
+    {
+      "mosaic": [
+        6023.473474746332,
+        864.9663566446843
+      ],
+      "pitch": [
+        100.0,
+        0.0
+      ],
+      "label": "RIGHT corner flag - FAR side",
+      "residual_m": 0.241611940220289,
+      "inlier": true
+    },
+    {
+      "mosaic": [
+        6782.654998737426,
+        1145.632497019904
+      ],
+      "pitch": [
+        78.0,
+        55.0
+      ],
+      "label": "RIGHT 22 x  NEAR 15m dashed line",
+      "residual_m": 0.5207934114492174,
+      "inlier": true
+    },
+    {
+      "mosaic": [
+        5144.866175310028,
+        1160.1230097143691
+      ],
+      "pitch": [
+        50.0,
+        55.0
+      ],
+      "label": "halfway  x  NEAR 15m dashed line",
+      "residual_m": 0.6372708713156101,
+      "inlier": true
+    }
+  ],
+  "median_residual_m": 0.5329048425002381
+}

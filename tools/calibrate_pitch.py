@@ -96,6 +96,14 @@ LANDMARKS = [
     ("RIGHT corner flag - FAR side", PITCH_LENGTH, 0.0),
 
     # -- near side: rare and precious. Any one of these is worth a lot ------
+    # Without points beyond y=55 the homography's vanishing line falls inside
+    # the pitch and the last few metres map to nonsense, so the near 5m dashes
+    # matter more than their count suggests.
+    ("LEFT 22  x  NEAR 5m dashed line", 22.0, NEAR_5),
+    ("RIGHT 22 x  NEAR 5m dashed line", 78.0, NEAR_5),
+    ("halfway  x  NEAR 5m dashed line", 50.0, NEAR_5),
+    ("LEFT 10m x  NEAR 5m dashed line", 40.0, NEAR_5),
+    ("RIGHT 10m x  NEAR 5m dashed line", 60.0, NEAR_5),
     ("LEFT 22  x  NEAR 15m dashed line", 22.0, NEAR_15),
     ("RIGHT 22 x  NEAR 15m dashed line", 78.0, NEAR_15),
     ("halfway  x  NEAR 15m dashed line", 50.0, NEAR_15),
@@ -194,6 +202,27 @@ def main() -> None:
     v = Viewer(img)
     points: list[tuple[float, float, str, float, float]] = []
     idx = 0
+
+    # Resume an existing session: keep points already placed and jump to the
+    # first landmark that has none, so adding a few extras does not mean
+    # re-clicking everything.
+    existing = CONFIG_DIR / f"{MATCH}.json"
+    if existing.exists():
+        cfg = json.loads(existing.read_text())
+        if cfg.get("mosaic_size") == [img.shape[1], img.shape[0]]:
+            for p in cfg["points"]:
+                points.append((p["mosaic"][0], p["mosaic"][1], p["label"],
+                               p["pitch"][0], p["pitch"][1]))
+            done = {p[2] for p in points}
+            print(f"resuming: loaded {len(points)} existing points from {existing}")
+            print("          press 'n' through the ones already placed, or 'u' to redo them")
+            while idx < len(LANDMARKS) and LANDMARKS[idx][0] in done:
+                idx += 1
+            print(f"          next unplaced landmark: "
+                  f"{LANDMARKS[idx][0] if idx < len(LANDMARKS) else '(none - press s)'}")
+        else:
+            print(f"ignoring {existing}: it was clicked on a different mosaic size "
+                  f"{cfg.get('mosaic_size')} vs {[img.shape[1], img.shape[0]]}")
 
     def on_mouse(event, x, y, flags, _):
         nonlocal idx
