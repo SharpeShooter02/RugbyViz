@@ -33,9 +33,11 @@ VIEW
 TAGGING            press once at the moment the event happens
     1  scrum            6  try
     2  lineout          7  penalty / free kick
-    3  ruck start       8  stoppage START
-    4  ruck ball out    9  stoppage END
-       (4 and 9 are aliases -- 'e' ends whichever of these is open)
+    3  ruck on OUR ball     8  stoppage START
+    4  ruck on THEIR ball    9  stoppage END
+       Which ruck key you press records whose ball it was, at no extra
+       keystroke. Without it, ruck speed averages your rucks with theirs.
+       End either one with 'e' (or 9 for a stoppage).
 
     5  kick in open play      (play continues)
     t  kick to touch          (play stops, lineout follows)
@@ -72,8 +74,8 @@ SCRUM     start when the 9 PUTS THE BALL IN, not at the knock-on.
           end when the ball leaves (8 picks up, or 9 clears).
 LINEOUT   start when the hooker THROWS, not when the ball went into touch.
           end when the ball is won and cleared.
-RUCK      start when the ball carrier is brought to ground and the contest
-          forms; end at ball out -- the 9's hands on the ball is a workable
+RUCK      3 if it is OUR ball, 4 if it is THEIRS. Start when the ball carrier
+          is brought to ground and the contest forms; end at ball out -- the 9's hands on the ball is a workable
           convention. Pick one and stay with it.
 PENALTY   tag at the WHISTLE, i.e. when the referee stops play. If a ruck,
           scrum, lineout or maul was still open, just press 7 -- it is closed
@@ -130,8 +132,11 @@ SPEEDS = [0.25, 0.5, 1.0, 2.0, 4.0, 8.0]
 EVENTS = {
     ord("1"): ("scrum", (80, 200, 255)),
     ord("2"): ("lineout", (80, 255, 200)),
-    ord("3"): ("ruck_start", (60, 220, 60)),
-    ord("4"): ("ruck_out", (140, 255, 140)),
+    # Which key you press at a ruck records whose ball it was. Zero extra
+    # keystrokes, and without it ruck speed averages your own rucks together
+    # with the opposition's, which no coach can act on.
+    ord("3"): ("ruck_ours", (60, 220, 60)),
+    ord("4"): ("ruck_theirs", (60, 160, 255)),
     ord("5"): ("kick_in_play", (255, 200, 80)),
     ord("t"): ("kick_to_touch", (255, 160, 40)),
     ord("p"): ("kick_at_posts", (200, 160, 60)),
@@ -160,8 +165,11 @@ ARROW_RIGHT = {2555904, 65363}
 ARROW_DOWN = {2621440, 65364}
 SKIP_S = 3.0
 
-OPENING = {"scrum", "lineout", "ruck_start", "stoppage_start", "huddle"}
-CLOSERS = {"ruck_start": "ruck_out", "stoppage_start": "stoppage_end"}
+# ruck_start is retained so tags made before the split still parse.
+OPENING = {"scrum", "lineout", "ruck_ours", "ruck_theirs", "ruck_start",
+           "stoppage_start", "huddle"}
+CLOSERS = {"ruck_ours": "ruck_out", "ruck_theirs": "ruck_out",
+           "ruck_start": "ruck_out", "stoppage_start": "stoppage_end"}
 
 # Events that terminate an open contest by themselves. Pressing one of these
 # closes whatever is open AND records why, because a ruck ended by a penalty
@@ -174,23 +182,34 @@ TERMINATORS = {"penalty", "try"}
 
 
 def base_of(opener: str) -> str:
-    return opener[:-6] if opener.endswith("_start") else opener
+    if opener.endswith("_start"):
+        return opener[:-6]
+    if opener.startswith("ruck_"):
+        return "ruck"
+    return opener
 
 
-def closes_what(ev: str) -> str | None:
-    """Which opener, if any, this event closes."""
+def closes_what(ev: str) -> set[str]:
+    """Which openers this event could close.
+
+    A set, not a single name: since the ruck key was split by possession,
+    ruck_out closes ruck_ours, ruck_theirs, or the legacy ruck_start, and only
+    the open stack knows which one is actually in play. Returning one arbitrary
+    member of that set silently failed to close rucks.
+    """
+    out = set()
     for op in OPENING:
-        if ev in (f"end_{op}", CLOSERS.get(op)) or            ev in {f"{base_of(op)}_end_{r}" for r in TERMINATORS}:
-            return op
-    return None
+        if ev == f"end_{op}" or ev == CLOSERS.get(op) or            ev in {f"{base_of(op)}_end_{r}" for r in TERMINATORS}:
+            out.add(op)
+    return out
 
 # Rows of (key, label) drawn along the bottom. Pairs that open and close
 # something are kept adjacent so the relationship is visible at a glance.
 LEGEND = [
-    [("3", "RUCK start"), ("e", "END  <- ends whatever is open"),
+    [("3", "RUCK ours"), ("4", "RUCK theirs"), ("e", "END  <- ends what is open"),
      ("1", "scrum"), ("2", "lineout"), ("h", "huddle"), ("8", "stoppage")],
     [("6", "try"), ("k", "kickoff/restart"), ("7", "penalty"),
-     ("4", "ruck ball out (same as e)"), ("9", "stoppage end (same as e)")],
+     ("9", "stoppage end (same as e)")],
     [("5", "kick in play"), ("t", "kick to touch"), ("p", "kick at posts"),
      ("o", "TURNOVER ours"), ("x", "TURNOVER theirs")],
     [("u", "undo"), ("w", "save"), ("g", "go to time"), ("q", "quit")],
@@ -213,9 +232,9 @@ def still_open(tags: list[tuple[float, str]]) -> list[str]:
             stack.append(ev)
         else:
             want = closes_what(ev)
-            if want and want in stack:
+            if want:
                 for i in range(len(stack) - 1, -1, -1):
-                    if stack[i] == want:
+                    if stack[i] in want:
                         stack.pop(i)
                         break
     return stack

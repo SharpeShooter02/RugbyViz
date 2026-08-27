@@ -160,7 +160,7 @@ downstream number means.
 |---|---|---|
 | scrum | the 9 **feeds** the ball | ball leaves (8 picks up / 9 clears) |
 | lineout | the hooker **throws** | ball won and cleared |
-| ruck | contest forms on the ground | ball out (9's hands on it) |
+| ruck | `3` if it is **our** ball, `4` if **theirs** | ball out (9's hands on it) |
 | penalty | the referee's **whistle** | closes any open contest automatically |
 | try | grounding | — (dead ball runs to next `kickoff`) |
 
@@ -173,6 +173,22 @@ Set pieces are tagged at the restart rather than the whistle because:
 Penalties are tagged at the whistle, so dead time runs from the whistle to
 whatever restarts play — scrum feed, lineout throw, or kick at posts. This is
 consistent, since all three restarts are themselves tagged at the restart.
+
+### D13 — Ruck possession is encoded in the key, not tagged separately
+
+Which ruck key is pressed records whose ball it was, at no extra keystroke.
+Without it, ruck speed averages your own rucks together with the opposition's,
+which no coach can act on.
+
+Full possession tracking was considered and rejected for the first pass. It
+roughly doubles the keystrokes, and possession % is not a stated goal.
+A model learning possession from formation (defending teams form a flat line,
+attacking teams have depth and pods) is plausible from the positional data and
+would need roughly one fully-tagged match to test — but it leans entirely on
+kit classification, which is weakest in contact. Revisit on a second match,
+once there is something to attach it to. Possession from the **ball** is not
+realistic on this footage: the ball is 5-10 px, motion-blurred, and invisible
+in every ruck.
 
 ### Turnovers
 
