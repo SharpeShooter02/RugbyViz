@@ -38,6 +38,14 @@ TAGGING            press once at the moment the event happens
     t  kick to touch          (play stops, lineout follows)
     p  kick at posts          (conversion or penalty attempt: dead time)
 
+    o  turnover won by OUR team
+    x  turnover won by the OPPOSITION
+       Tag these at contests you are already marking. The type (ruck, scrum,
+       lineout) is derived from whichever contest was open, so there is no
+       separate key for it. Two keys rather than one "turnover" key because
+       an absolute tag only costs the event it belongs to, whereas a
+       possession FLIP inverts everything after a missed one.
+
     h  huddle / team talk
     k  kickoff / restart      TAG THIS AFTER EVERY TRY -- the span from a try
                               to the next restart is dead time and would
@@ -131,6 +139,13 @@ EVENTS = {
     ord("h"): ("huddle", (200, 120, 255)),
     ord("k"): ("kickoff", (255, 255, 120)),
     ord("e"): ("end", (170, 170, 170)),
+    # Turnovers are ABSOLUTE (who won it), not a possession flip. A flip is
+    # relative: miss one and every later possession call inverts silently. An
+    # absolute tag costs only the event it belongs to. The TYPE of turnover --
+    # ruck, scrum, lineout -- is derived from which contest was open, so it
+    # needs no key of its own.
+    ord("o"): ("turnover_ours", (120, 255, 120)),
+    ord("x"): ("turnover_theirs", (120, 120, 255)),
 }
 
 # Arrow keys arrive as extended codes, so the loop uses waitKeyEx and only
@@ -174,7 +189,8 @@ LEGEND = [
     [("6", "try"), ("k", "kickoff/restart"), ("7", "penalty"),
      ("4", "ruck ball out (same as e)"), ("9", "stoppage end (same as e)")],
     [("5", "kick in play"), ("t", "kick to touch"), ("p", "kick at posts"),
-     ("u", "undo"), ("w", "save"), ("g", "go to time")],
+     ("o", "TURNOVER ours"), ("x", "TURNOVER theirs")],
+    [("u", "undo"), ("w", "save"), ("g", "go to time"), ("q", "quit")],
     [("space", "play/pause"), ("<-/->", "3s"), ("up/dn", "speed"),
      ("a/d", "1s"), ("A/D", "10s"), ("z/c", "60s"),
      ("f", "fullscreen"), ("scroll", "zoom"), ("r", "reset"), ("l", "list")],

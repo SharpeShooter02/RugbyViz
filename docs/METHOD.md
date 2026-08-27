@@ -174,6 +174,24 @@ Penalties are tagged at the whistle, so dead time runs from the whistle to
 whatever restarts play — scrum feed, lineout throw, or kick at posts. This is
 consistent, since all three restarts are themselves tagged at the restart.
 
+### Turnovers
+
+Tag `o` (won by us) or `x` (won by the opposition) at contests already being
+marked. Two absolute keys rather than one "turnover" key that flips
+possession: a flip is relative, so a single missed tag inverts every later
+possession call silently, whereas a missed absolute tag costs only its own
+event.
+
+Turnover **type** is derived from whichever contest was open at the time —
+between `ruck_start` and its end it is a ruck turnover, between `scrum` tags a
+scrum steal — so it needs no key of its own.
+
+This delivers turnover count, location and breakdown by phase, and ruck
+retention percentage. It does **not** deliver possession percentage, which
+needs continuous possession tracking including kicks, knock-ons and open-play
+turnovers — roughly double the keystrokes, and a separate decision to make on
+its own merits.
+
 ### Contests ended by a penalty or a try
 
 Press `7` or `6` alone; do not press `e` first. The tagger closes whatever was
