@@ -33,6 +33,14 @@ TAGGING            press once at the moment the event happens
                               to the next restart is dead time and would
                               otherwise be credited as attacking territory.
 
+    e  END of the thing currently open
+                              Closes the most recent scrum / lineout / ruck /
+                              stoppage / huddle. Optional: skip it and the
+                              duration is inferred from the next tag instead.
+                              Worth using on scrums, where resets make the
+                              real duration much longer than it looks.
+                              (ruck ball-out already has its own key, 4.)
+
     u            undo last tag
     w            write tags to disk (also autosaves every 20 tags)
     q / esc      quit (prompts if unsaved)
@@ -77,7 +85,38 @@ EVENTS = {
     ord("9"): ("stoppage_end", (0, 200, 255)),
     ord("h"): ("huddle", (200, 120, 255)),
     ord("k"): ("kickoff", (255, 255, 120)),
+    # Generic end marker. Pairs with whatever start-type event is still open,
+    # so a scrum that needs three resets can be measured rather than assumed.
+    ord("e"): ("end", (170, 170, 170)),
 }
+
+# Events that open something an "end" tag can close, and what already closes
+# them. ruck_start has its own dedicated closer (key 4, ball out).
+OPENING = {"scrum", "lineout", "ruck_start", "stoppage_start", "huddle"}
+CLOSERS = {"ruck_start": "ruck_out", "stoppage_start": "stoppage_end"}
+
+
+def still_open(tags: list[tuple[float, str]]) -> list[str]:
+    """Openers with no matching close yet, oldest first.
+
+    Needed because 'the last opener seen' is not the same as 'the thing
+    currently open' -- after a scrum has been closed and a try tagged, there
+    is nothing left to end, and pressing 'e' should say so rather than close
+    the scrum a second time.
+    """
+    stack: list[str] = []
+    closes = {v: k for k, v in CLOSERS.items()}
+    for _, ev in sorted(tags, key=lambda r: r[0]):
+        if ev in OPENING:
+            stack.append(ev)
+        else:
+            want = ev[4:] if ev.startswith("end_") else closes.get(ev)
+            if want and want in stack:
+                for i in range(len(stack) - 1, -1, -1):
+                    if stack[i] == want:
+                        stack.pop(i)
+                        break
+    return stack
 
 
 def fmt(s: float) -> str:
@@ -114,11 +153,11 @@ class Tagger:
         if OUT_CSV.exists():
             with OUT_CSV.open() as f:
                 self.tags = [(float(r["t"]), r["event"]) for r in csv.DictReader(f)]
-            self.tags.sort()
+            self.tags.sort(key=lambda r: r[0])
             print(f"loaded {len(self.tags)} existing tags from {OUT_CSV}")
 
     def save(self) -> None:
-        self.tags.sort()
+        self.tags.sort(key=lambda r: r[0])
         with OUT_CSV.open("w", newline="") as f:
             wr = csv.writer(f)
             wr.writerow(["t", "event", "mmss"])
@@ -186,7 +225,7 @@ class Tagger:
         cv2.putText(canvas, " | ".join(recent) if recent else "no tags yet",
                     (14, y0 + 40), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (170, 170, 170), 1)
         l1 = "1 scrum   2 lineout   3 ruck-start   4 ball-out   6 try   7 penalty"
-        l2 = "5 kick-in-play   t kick-to-touch   p kick-at-posts   8/9 stoppage   h huddle   k kickoff/restart"
+        l2 = "5 kick-in-play   t kick-to-touch   p kick-at-posts   8/9 stoppage   h huddle   k kickoff/restart   e END"
         cv2.putText(canvas, l1, (14, y0 + 58), cv2.FONT_HERSHEY_SIMPLEX, 0.44, (150, 150, 150), 1)
         cv2.putText(canvas, l2, (14, y0 + 76), cv2.FONT_HERSHEY_SIMPLEX, 0.44, (150, 150, 150), 1)
         return canvas
@@ -267,6 +306,13 @@ class Tagger:
         elif k in EVENTS:
             name, _ = EVENTS[k]
             t = self.t
+            if name == "end":
+                open_now = still_open(self.tags)
+                if not open_now:
+                    self.msg = "nothing open to end"
+                    print(f"  {self.msg}")
+                    return True
+                name = f"end_{open_now[-1]}"
             self.tags.append((t, name))
             self.dirty = True
             self.msg = f"+ {name} @ {fmt(t)}"
