@@ -53,6 +53,34 @@ TAGGING            press once at the moment the event happens
 
 Tags are written to data/derived/tags/<match>_tags.csv and reloaded on restart,
 so tagging can be done across several sittings.
+
+
+CONVENTIONS -- keep these consistent, they define what the numbers mean
+----------------------------------------------------------------------
+SCRUM     start when the 9 PUTS THE BALL IN, not at the knock-on.
+          end when the ball leaves (8 picks up, or 9 clears).
+LINEOUT   start when the hooker THROWS, not when the ball went into touch.
+          end when the ball is won and cleared.
+RUCK      start when the ball carrier is brought to ground and the contest
+          forms; end at ball out -- the 9's hands on the ball is a workable
+          convention. Pick one and stay with it.
+
+Why the feed and the throw rather than the whistle:
+
+  - it separates the CONTEST from the SETUP. Tagging at the knock-on would
+    conflate how long they took to pack down with how long the scrum lasted,
+    and those are different things.
+  - setup time still comes free: it is the gap between the previous event
+    ending and this one starting, computed without extra tagging.
+  - it is easier to hit consistently. A feed or a throw is an unambiguous
+    moment; a knock-on on wide-angle footage often is not.
+
+Consistency beats correctness of convention here. A systematic offset can be
+measured and corrected afterwards; inconsistent marking cannot.
+
+Do NOT tag 8/9 stoppage for routine set pieces -- routine dead time is already
+implied by the gaps between events. Reserve 8/9 for injuries, long delays,
+cards and anything else out of the ordinary.
 """
 from __future__ import annotations
 
