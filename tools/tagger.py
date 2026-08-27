@@ -26,6 +26,9 @@ VIEW
     right-drag   pan
     r            reset zoom and pan
     l            show / hide the tag list panel
+    click a tag  jump the video to that tag
+    wheel over   scroll the tag list (elsewhere the wheel zooms)
+      the list
 
 TAGGING            press once at the moment the event happens
     1  scrum            6  try
@@ -260,6 +263,9 @@ class Tagger:
         self.dragging = False
         self.drag_from = (0, 0)
         self.show_list = True
+        self.list_offset = 0          # manual scroll away from the playhead
+        self._rows: list[tuple[int, int, float]] = []   # (y0, y1, t) hit boxes
+        self._panel = (0, 0, 0, 0)    # x0, y0, w, h of the tag panel
 
         self.tags: list[tuple[float, str]] = []
         self.load()
@@ -295,6 +301,7 @@ class Tagger:
         return self.cap.get(cv2.CAP_PROP_POS_FRAMES) / self.fps
 
     def seek(self, t: float) -> None:
+        self.list_offset = 0
         t = float(np.clip(t, 0, self.dur - 0.1))
         self.cap.set(cv2.CAP_PROP_POS_FRAMES, int(t * self.fps))
         self.read()
@@ -320,7 +327,26 @@ class Tagger:
         return (self.cx - halfw + (px / self.view_w) * 2 * halfw,
                 self.cy - halfh + (py / self.view_h) * 2 * halfh)
 
+    def in_panel(self, x: int, y: int) -> bool:
+        px, py, pw, ph = self._panel
+        return self.show_list and px <= x <= px + pw and py <= y <= py + ph
+
     def on_mouse(self, event, x, y, flags, _):
+        # The tag panel captures the wheel and left clicks so the list can be
+        # scrolled and jumped to; everywhere else the wheel still zooms.
+        if self.in_panel(x, y):
+            if event == cv2.EVENT_LBUTTONDOWN:
+                for ry0, ry1, tt in self._rows:
+                    if ry0 <= y <= ry1:
+                        self.playing = False
+                        self.seek(tt)
+                        self.list_offset = 0
+                        self.msg = f"jumped to {fmt(tt)}"
+                        return
+            elif event == cv2.EVENT_MOUSEWHEEL:
+                self.list_offset += -3 if flags > 0 else 3
+                return
+            return
         if event == cv2.EVENT_RBUTTONDOWN:
             self.dragging = True
             self.drag_from = (x, y)
@@ -418,12 +444,13 @@ class Tagger:
         y0, rh = 52, 21
         h = 34 + ROWS * rh
 
+        self._panel = (x0, y0, PW, h)
         panel = canvas[y0:y0 + h, x0:x0 + PW]
         cv2.addWeighted(panel, 0.25, np.zeros_like(panel), 0.75, 0, panel)
         cv2.rectangle(canvas, (x0, y0), (x0 + PW, y0 + h), (90, 90, 90), 1)
 
         tags = sorted(self.tags, key=lambda r: r[0])
-        cv2.putText(canvas, f"TAGS  {len(tags)} total   [l] hide",
+        cv2.putText(canvas, f"TAGS  {len(tags)}   click to jump   [l] hide",
                     (x0 + 10, y0 + 20), cv2.FONT_HERSHEY_SIMPLEX, 0.48,
                     (220, 220, 220), 1)
 
@@ -432,11 +459,14 @@ class Tagger:
                         cv2.FONT_HERSHEY_SIMPLEX, 0.46, (140, 140, 140), 1)
             return
 
-        # centre the window on the playhead
+        # centre the window on the playhead, then apply any manual scroll
         after = sum(1 for tt, _ in tags if tt < t)
-        start = int(np.clip(after - ROWS // 2, 0, max(0, len(tags) - ROWS)))
+        start = int(np.clip(after - ROWS // 2 + self.list_offset,
+                            0, max(0, len(tags) - ROWS)))
+        self._rows = []
         for i, (tt, ev) in enumerate(tags[start:start + ROWS]):
             yy = y0 + 42 + i * rh
+            self._rows.append((yy - 14, yy + 6, tt))
             near = abs(tt - t) < 1.0
             col = EVENTS_BY_NAME.get(ev.replace("end_", ""), (190, 190, 190))
             if near:
