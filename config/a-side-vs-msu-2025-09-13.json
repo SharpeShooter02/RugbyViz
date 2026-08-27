@@ -1,6 +1,6 @@
 {
   "match": "a-side-vs-msu-2025-09-13",
-  "created": "2026-08-26T23:52:28",
+  "created": "2026-08-27T00:22:34",
   "pitch_length_m": 100.0,
   "pitch_width_m": 70.0,
   "mosaic_size": [
@@ -9,19 +9,19 @@
   ],
   "mosaic_to_pitch": [
     [
-      -0.009464212298361752,
-      -0.07093651487148353,
-      100.96152770866016
+      -0.009314837750303565,
+      -0.07080319574781276,
+      100.31248564702163
     ],
     [
-      0.00020221544466462495,
-      -0.11112083537215381,
-      94.90834615417147
+      0.0001308587207096123,
+      -0.10869555795840645,
+      93.14261331944942
     ],
     [
-      1.01688402714752e-05,
-      -0.0014286055005859717,
-      1.0
+      8.604559358074827e-06,
+      -0.0014136938511459555,
+      0.9999999999999999
     ]
   ],
   "points": [
@@ -35,7 +35,7 @@
         32.2
       ],
       "label": "RIGHT goalpost - FAR-side post base",
-      "residual_m": 0.3449586782930115,
+      "residual_m": 0.6762005829748581,
       "inlier": true
     },
     {
@@ -48,7 +48,7 @@
         37.8
       ],
       "label": "RIGHT goalpost - NEAR-side post base",
-      "residual_m": 0.5984649535230407,
+      "residual_m": 0.6351203661185739,
       "inlier": true
     },
     {
@@ -61,7 +61,7 @@
         32.2
       ],
       "label": "LEFT goalpost - FAR-side post base",
-      "residual_m": 0.42053160940092155,
+      "residual_m": 0.4785140855129353,
       "inlier": true
     },
     {
@@ -74,7 +74,7 @@
         37.8
       ],
       "label": "LEFT goalpost - NEAR-side post base",
-      "residual_m": 0.5450162735512587,
+      "residual_m": 0.4760323539365564,
       "inlier": true
     },
     {
@@ -87,7 +87,7 @@
         0.0
       ],
       "label": "halfway  x  FAR touchline",
-      "residual_m": 0.7475968827702932,
+      "residual_m": 0.5274420882363662,
       "inlier": true
     },
     {
@@ -100,7 +100,7 @@
         0.0
       ],
       "label": "RIGHT 22 x  FAR touchline",
-      "residual_m": 1.0607576215433658,
+      "residual_m": 0.6401919911084711,
       "inlier": true
     },
     {
@@ -113,7 +113,7 @@
         15.0
       ],
       "label": "LEFT 22  x  FAR 15m dashed line",
-      "residual_m": 0.27017762325755934,
+      "residual_m": 0.3381312964582092,
       "inlier": true
     },
     {
@@ -126,7 +126,7 @@
         5.0
       ],
       "label": "halfway  x  FAR 5m dashed line",
-      "residual_m": 0.05455195795203393,
+      "residual_m": 0.17893665111132434,
       "inlier": true
     },
     {
@@ -139,7 +139,7 @@
         5.0
       ],
       "label": "LEFT 22  x  FAR 5m dashed line",
-      "residual_m": 0.5830787703170677,
+      "residual_m": 0.5463009815168951,
       "inlier": true
     },
     {
@@ -152,7 +152,7 @@
         0.0
       ],
       "label": "RIGHT corner flag - FAR side",
-      "residual_m": 0.241611940220289,
+      "residual_m": 0.6164693201200486,
       "inlier": true
     },
     {
@@ -165,7 +165,7 @@
         55.0
       ],
       "label": "RIGHT 22 x  NEAR 15m dashed line",
-      "residual_m": 0.5207934114492174,
+      "residual_m": 0.7578458956081756,
       "inlier": true
     },
     {
@@ -178,9 +178,76 @@
         55.0
       ],
       "label": "halfway  x  NEAR 15m dashed line",
-      "residual_m": 0.6372708713156101,
+      "residual_m": 0.8149716741254606,
+      "inlier": true
+    },
+    {
+      "mosaic": [
+        5152.294461011943,
+        893.6194940878029
+      ],
+      "pitch": [
+        50.0,
+        15.0
+      ],
+      "label": "halfway  x  FAR 15m dashed line",
+      "residual_m": 0.14247275021735106,
+      "inlier": true
+    },
+    {
+      "mosaic": [
+        8115.393518014697,
+        1479.9923106146703
+      ],
+      "pitch": [
+        78.0,
+        65.0
+      ],
+      "label": "RIGHT 22 x  NEAR 5m dashed line",
+      "residual_m": 0.37236715661691355,
+      "inlier": true
+    },
+    {
+      "mosaic": [
+        5133.898229188291,
+        1542.8858547419622
+      ],
+      "pitch": [
+        50.0,
+        65.0
+      ],
+      "label": "halfway  x  NEAR 5m dashed line",
+      "residual_m": 0.08836923327133281,
+      "inlier": true
+    },
+    {
+      "mosaic": [
+        3835.9762953506493,
+        1582.7056713714223
+      ],
+      "pitch": [
+        40.0,
+        65.0
+      ],
+      "label": "LEFT 10m x  NEAR 5m dashed line",
+      "residual_m": 0.5857584087750921,
+      "inlier": true
+    },
+    {
+      "mosaic": [
+        6314.11256639556,
+        1520.702397199238
+      ],
+      "pitch": [
+        60.0,
+        65.0
+      ],
+      "label": "RIGHT 10m x  NEAR 5m dashed line",
+      "residual_m": 0.41987788826420214,
       "inlier": true
     }
   ],
-  "median_residual_m": 0.5329048425002381
+  "median_residual_m": 0.5274420882363662,
+  "max_valid_y_m": 70.0,
+  "degenerate_fraction": 0.0
 }

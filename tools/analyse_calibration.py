@@ -37,8 +37,13 @@ def to_pitch(mx, my):
 print("resolution across the pitch width (at halfway):")
 print(f"  {'pitch y':>8}  {'px per metre':>13}  {'1 px =':>10}  region")
 for y in (0, 5, 15, 25, 35, 45, 55, 62, 68, 70):
-    a, b = to_mosaic(50, max(0, y - 0.5)), to_mosaic(50, min(W, y + 0.5))
-    ppm = float(np.linalg.norm(b - a))
+    # Use a symmetric interval and divide by its ACTUAL length. Clamping the
+    # endpoints at the pitch edge without adjusting the divisor understates
+    # px/m at y=0 and y=70 by 2x, which looks like a non-monotonic scale and
+    # invites a false diagnosis of a vanishing-line collapse.
+    lo, hispan = max(0.0, y - 0.5), min(float(W), y + 0.5)
+    a, b = to_mosaic(50, lo), to_mosaic(50, hispan)
+    ppm = float(np.linalg.norm(b - a)) / (hispan - lo)
     tag = "clicked" if any(abs(y - c) < 0.6 for c in clicked_y) else (
         "EXTRAPOLATED" if y > max(clicked_y) else "interpolated")
     print(f"  {y:>8.0f}  {ppm:>13.1f}  {1/max(ppm,1e-9):>9.2f}m  {tag}")
@@ -71,6 +76,39 @@ for n in probe_names:
     v = np.array(shifts[n])
     if len(v):
         print(f"  {n:<24}{np.median(v):>11.2f} m{np.percentile(v,90):>9.2f} m")
+
+# --- where does the mapping stop being valid? ------------------------------
+# A homography sends one line in the source plane to infinity: the vanishing
+# line, where the projective denominator w = h20*x + h21*y + h22 hits zero.
+# Beyond it, points fold through infinity and coordinates are meaningless.
+#
+# Here that line is real physics, not a fitting error: the camera stands ON the
+# near touchline near halfway, and a camera cannot image the ground it occupies.
+print("\nvalid region (where the projective denominator stays away from zero)")
+hi = H_inv
+gx, gy = np.meshgrid(np.linspace(0, L, 201), np.linspace(0, W, 141))
+w = hi[2, 0] * gx + hi[2, 1] * gy + hi[2, 2]
+ref = hi[2, 0] * 50.0 + hi[2, 1] * 35.0 + hi[2, 2]   # denominator mid-pitch
+rel = w / ref
+bad = rel < 0.02          # sign flip or near-zero => at/over the vanishing line
+print(f"  fraction of the pitch surface that is degenerate: {100*bad.mean():.1f}%")
+
+# Largest y that is valid across the WHOLE length, not just at halfway.
+valid_rows = [float(y) for y, row in zip(np.linspace(0, W, 141), bad) if not row.any()]
+max_valid = max(valid_rows) if valid_rows else 0.0
+worst_x = float(gx[0][np.argmin(rel.min(axis=0))])
+print(f"  valid at every x up to y = {max_valid:.1f} m of {W:.0f}")
+print(f"  weakest column is x = {worst_x:.0f} m (min relative denominator "
+      f"{rel.min():.3f})")
+if max_valid < W:
+    print(f"  -> pitch y > {max_valid:.0f} m is unreliable near the touchline ends.")
+    print(f"     That is where the camera stands, so players there are largely")
+    print(f"     out of frame anyway. Flag rather than trust those positions.")
+
+cfg["max_valid_y_m"] = round(min(max_valid, W), 1)
+cfg["degenerate_fraction"] = round(float(bad.mean()), 4)
+Path("config/a-side-vs-msu-2025-09-13.json").write_text(json.dumps(cfg, indent=2))
+print(f"  recorded max_valid_y_m = {cfg['max_valid_y_m']} in the config")
 
 # --- what does the pitch rectangle map back to? ----------------------------
 print("\nsanity: pitch corners -> mosaic -> pitch round trip")
