@@ -10,6 +10,8 @@ Run:
 
 PLAYBACK
     space        play / pause
+    LEFT / RIGHT arrow   skip back / forward 3 seconds
+    UP / DOWN arrow      playback speed up / down
     a  /  d      step back / forward 1 second
     A  /  D      jump 10 seconds        (shift)
     z  /  c      jump 60 seconds
@@ -91,6 +93,15 @@ EVENTS = {
     ord("e"): ("end", (170, 170, 170)),
 }
 
+# Arrow keys arrive as extended codes, so the loop uses waitKeyEx and only
+# masks values below 256. Codes differ by backend: the first entry in each set
+# is Windows, the second GTK/Qt.
+ARROW_LEFT = {2424832, 65361}
+ARROW_UP = {2490368, 65362}
+ARROW_RIGHT = {2555904, 65363}
+ARROW_DOWN = {2621440, 65364}
+SKIP_S = 3.0
+
 OPENING = {"scrum", "lineout", "ruck_start", "stoppage_start", "huddle"}
 CLOSERS = {"ruck_start": "ruck_out", "stoppage_start": "stoppage_end"}
 
@@ -103,9 +114,9 @@ LEGEND = [
      ("4", "ruck ball out (same as e)"), ("9", "stoppage end (same as e)")],
     [("5", "kick in play"), ("t", "kick to touch"), ("p", "kick at posts"),
      ("u", "undo"), ("w", "save"), ("g", "go to time")],
-    [("space", "play/pause"), ("a/d", "1s"), ("A/D", "10s"), ("z/c", "60s"),
-     ("-/=", "speed"), ("f", "fullscreen"), ("scroll", "zoom"), ("r", "reset view"),
-     ("l", "tag list")],
+    [("space", "play/pause"), ("<-/->", "3s"), ("up/dn", "speed"),
+     ("a/d", "1s"), ("A/D", "10s"), ("z/c", "60s"),
+     ("f", "fullscreen"), ("scroll", "zoom"), ("r", "reset"), ("l", "list")],
 ]
 
 
@@ -388,9 +399,11 @@ class Tagger:
             else:
                 delay = 20
 
-            k = cv2.waitKey(delay) & 0xFF
-            if k == 255:
+            k = cv2.waitKeyEx(delay)
+            if k in (-1, 255):
                 continue
+            if k < 256:
+                k &= 0xFF
             if not self.handle(k, win):
                 break
         cv2.destroyAllWindows()
@@ -402,7 +415,17 @@ class Tagger:
             if self.dirty:
                 self.save()
             return False
-        if k == ord(" "):
+        if k in ARROW_LEFT:
+            self.seek(self.t - SKIP_S)
+        elif k in ARROW_RIGHT:
+            self.seek(self.t + SKIP_S)
+        elif k in ARROW_UP:
+            self.speed_i = min(len(SPEEDS) - 1, self.speed_i + 1)
+            self.msg = f"speed x{SPEEDS[self.speed_i]:g}"
+        elif k in ARROW_DOWN:
+            self.speed_i = max(0, self.speed_i - 1)
+            self.msg = f"speed x{SPEEDS[self.speed_i]:g}"
+        elif k == ord(" "):
             self.playing = not self.playing
         elif k == ord("f"):
             self.fullscreen = not self.fullscreen
