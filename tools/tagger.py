@@ -19,13 +19,19 @@ PLAYBACK
     g            go to time (type MM:SS in the terminal)
 
 TAGGING            press once at the moment the event happens
-    1  scrum            5  kick
-    2  lineout          6  try
-    3  ruck start       7  penalty / free kick
-    4  ruck ball out    8  stoppage START (injury, reset, long delay)
-                        9  stoppage END
+    1  scrum            6  try
+    2  lineout          7  penalty / free kick
+    3  ruck start       8  stoppage START (injury, reset, long delay)
+    4  ruck ball out    9  stoppage END
+
+    5  kick in open play      (play continues)
+    t  kick to touch          (play stops, lineout follows)
+    p  kick at posts          (conversion or penalty attempt: dead time)
+
     h  huddle / team talk
-    k  kickoff / restart
+    k  kickoff / restart      TAG THIS AFTER EVERY TRY -- the span from a try
+                              to the next restart is dead time and would
+                              otherwise be credited as attacking territory.
 
     u            undo last tag
     w            write tags to disk (also autosaves every 20 tags)
@@ -50,15 +56,21 @@ OUT_DIR.mkdir(parents=True, exist_ok=True)
 OUT_CSV = OUT_DIR / "a-side-vs-msu-2025-09-13_tags.csv"
 
 VIEW_W, VIEW_H = 1400, 788
-BAR_H = 96
+BAR_H = 108
 SPEEDS = [0.25, 0.5, 1.0, 2.0, 4.0, 8.0]
 
+# Kick types are separate keys because they mean different things downstream:
+# an in-play kick keeps the clock running, a kick to touch ends the passage of
+# play, and a kick at posts is pure dead time. Cheap to distinguish while
+# watching, impossible to recover afterwards.
 EVENTS = {
     ord("1"): ("scrum", (80, 200, 255)),
     ord("2"): ("lineout", (80, 255, 200)),
     ord("3"): ("ruck_start", (60, 220, 60)),
     ord("4"): ("ruck_out", (140, 255, 140)),
-    ord("5"): ("kick", (255, 200, 80)),
+    ord("5"): ("kick_in_play", (255, 200, 80)),
+    ord("t"): ("kick_to_touch", (255, 160, 40)),
+    ord("p"): ("kick_at_posts", (200, 160, 60)),
     ord("6"): ("try", (60, 60, 255)),
     ord("7"): ("penalty", (255, 120, 255)),
     ord("8"): ("stoppage_start", (0, 140, 255)),
@@ -173,9 +185,10 @@ class Tagger:
         recent = [f"{fmt(tt)} {ev}" for tt, ev in self.tags[-3:]][::-1]
         cv2.putText(canvas, " | ".join(recent) if recent else "no tags yet",
                     (14, y0 + 40), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (170, 170, 170), 1)
-        legend = "1scrum 2lineout 3ruck 4ballout 5kick 6try 7pen 8stop> 9stop< h-huddle k-kickoff"
-        cv2.putText(canvas, legend, (14, y0 + 62), cv2.FONT_HERSHEY_SIMPLEX,
-                    0.44, (140, 140, 140), 1)
+        l1 = "1 scrum   2 lineout   3 ruck-start   4 ball-out   6 try   7 penalty"
+        l2 = "5 kick-in-play   t kick-to-touch   p kick-at-posts   8/9 stoppage   h huddle   k kickoff/restart"
+        cv2.putText(canvas, l1, (14, y0 + 58), cv2.FONT_HERSHEY_SIMPLEX, 0.44, (150, 150, 150), 1)
+        cv2.putText(canvas, l2, (14, y0 + 76), cv2.FONT_HERSHEY_SIMPLEX, 0.44, (150, 150, 150), 1)
         return canvas
 
     # -- main loop --------------------------------------------------------

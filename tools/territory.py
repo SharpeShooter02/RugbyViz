@@ -61,11 +61,45 @@ ZONES = [("own 22", 0, 22), ("own half", 22, 50),
          ("opp half", 50, 78), ("opp 22", 78, 100)]
 
 
+TAGS = Path("data/derived/tags/a-side-vs-msu-2025-09-13_tags.csv")
+
+# After a try there is typically 60-90 s of players walking back, a conversion,
+# and a restart. Counting that as territory is not merely noise -- it is
+# credited deep in the ATTACKING 22, exactly where it most distorts the figure.
+# Scoring a try would inflate your own territory number, which is backwards.
+DEAD_AFTER = {"try": "kickoff", "kick_at_posts": "kickoff"}
+DEAD_MAX_S = 180.0     # give up bracketing if no restart was tagged
+
+
 def load():
     rows = list(csv.DictReader(open(POSITIONS)))
     t = np.array([float(r["t"]) for r in rows])
     x = np.array([float(r["play_x"]) if r["play_x"] else np.nan for r in rows])
     return t, x
+
+
+def dead_spans() -> list[tuple[float, float, str]]:
+    """Intervals to exclude, derived from human tags.
+
+    try -> next kickoff, and any explicit stoppage_start -> stoppage_end.
+    Tag-derived, so it needs no detector and cannot be wrong about what
+    happened -- only about exactly when.
+    """
+    if not TAGS.exists():
+        return []
+    tags = sorted((float(r["t"]), r["event"]) for r in csv.DictReader(open(TAGS)))
+    spans = []
+    for i, (tt, ev) in enumerate(tags):
+        if ev in DEAD_AFTER:
+            want = DEAD_AFTER[ev]
+            nxt = next((u for u, e in tags[i + 1:] if e == want and u - tt <= DEAD_MAX_S), None)
+            if nxt is not None:
+                spans.append((tt, nxt, f"{ev}->{want}"))
+        elif ev == "stoppage_start":
+            nxt = next((u for u, e in tags[i + 1:] if e == "stoppage_end"), None)
+            if nxt is not None:
+                spans.append((tt, nxt, "tagged stoppage"))
+    return spans
 
 
 def moving_mask(t, x):
@@ -119,7 +153,23 @@ def main() -> None:
         print("WARNING: periods are not human-verified. Run tools/set_periods.py\n")
     moving = moving_mask(t, x)
 
-    print(f"our team: {per['our_team_kit']}   "
+    # Human-tagged dead intervals override the movement heuristic. A tag knows
+    # WHAT happened; the heuristic only guesses that something stopped.
+    spans = dead_spans()
+    if spans:
+        killed = 0.0
+        for a, b, _ in spans:
+            m = (t >= a) & (t <= b)
+            killed += (b - a) * (moving[m].mean() if m.any() else 0)
+            moving[m] = False
+        print(f"excluded {len(spans)} tagged dead intervals "
+              f"({sum(b - a for a, b, _ in spans)/60:.1f} min, of which "
+              f"{killed/60:.1f} min the heuristic had counted as live)")
+    else:
+        print("no tags found - dead time is heuristic only. Tag tries and")
+        print("restarts in tools/tagger.py to remove post-try dead ball.")
+
+    print(f"\nour team: {per['our_team_kit']}   "
           f"zones measured from OUR try line (0) to THEIRS (100)\n")
 
     agg = {"wall": [], "play": []}
