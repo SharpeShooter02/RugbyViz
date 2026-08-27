@@ -79,3 +79,55 @@ for precise metres-gained.
    Untested. May require tiled inference.
 4. **Python 3.13** is ahead of much of the ML ecosystem. May need a 3.12 venv
    when PyTorch and a detector are added.
+
+## 2025-08-26 — Detection spike: resolution is everything, crowd is the real problem
+
+**Question.** Can an off-the-shelf detector see far-touchline players (~25-35 px
+tall)? If not, the tracking layer is unreliable on half the pitch.
+
+**Method.** `tools/detect_spike.py`. YOLO11x, COCO-pretrained, class `person`
+only, conf 0.25, on 8 frames sampled across the match. Three strategies:
+full frame at 640 px (ultralytics default, which downscales 1920 -> 640), full
+frame at native 1920 px, and tiled 3x2 with 20% overlap at 640 px per tile.
+
+**Result.** Total person detections across all 8 frames:
+
+| Strategy | detections |
+|---|---|
+| full @ 640 | 116 |
+| tiled 3x2 @ 640 | 247 |
+| **full @ 1920** | **475** |
+
+At 640 the detector finds only the largest, nearest ~10 players per frame and
+misses entire ruck clusters. At 1920 it finds essentially every player on the
+pitch. **Tiling is not needed and actively underperforms** full-resolution
+inference — it fragments players across tile boundaries and the merge step
+loses more than the upscaling gains. That removes a whole planned subsystem.
+
+**The bottleneck is not detection — it is discrimination.** At 1920 the
+detector also finds the entire spectator crowd, ~40+ people per frame standing
+along the far touchline. Raw counts are meaningless: a match has ~33 people on
+the pitch (30 players + officials), but we get 50-79 detections per frame.
+
+Colour cannot separate them: spectators wear club colours too.
+
+**This makes pitch calibration a prerequisite, not a parallel task.** Once the
+mosaic -> pitch homography exists, any detection whose feet land outside the
+pitch polygon is rejected. Calibration therefore does double duty — territory
+stats *and* crowd rejection. It should be built before detection is useful.
+
+### Throughput (`tools/detect_bench.py`, RTX 3080, imgsz=1920)
+
+| model | ms/frame | det/frame | dup pairs/frame | full match @ 30 fps |
+|---|---|---|---|---|
+| yolo11m | 37.3 | 41.0 | 0.9 | 1.8 h |
+| yolo11x | 74.3 | 59.4 | 2.0 | 3.6 h |
+
+Full-rate processing is affordable but unnecessary: territory needs ~2-5 fps and
+ruck timing ~5-10 fps. At 5 fps a full match is ~36 min with yolo11x.
+
+Duplicate boxes (IoU > 0.3 between two detections) run ~2/frame on yolo11x —
+modest, but will double-count players if not merged. Needs NMS tuning.
+
+**Conclusion.** Detection risk is retired. Use yolo11x at imgsz=1920, no tiling.
+The next blocker is pitch calibration for crowd rejection.
