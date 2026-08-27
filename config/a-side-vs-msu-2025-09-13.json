@@ -249,5 +249,25 @@
   ],
   "median_residual_m": 0.5274420882363662,
   "max_valid_y_m": 70.0,
-  "degenerate_fraction": 0.0
+  "degenerate_fraction": 0.0,
+  "kit_model": {
+    "space": "median BGR / sum (chromaticity)",
+    "centres": {
+      "red": [
+        0.2068178802728653,
+        0.22955110669136047,
+        0.5636310577392578
+      ],
+      "dark": [
+        0.2571457326412201,
+        0.33600053191185,
+        0.40685388445854187
+      ]
+    },
+    "n_samples": 924,
+    "balance": {
+      "red": 0.378,
+      "dark": 0.622
+    }
+  }
 }

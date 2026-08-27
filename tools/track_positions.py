@@ -40,6 +40,7 @@ ANCHOR_DIR = Path("data/derived/mosaic_src")
 OUT_DIR = Path("data/derived/positions")
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 OUT_CSV = OUT_DIR / "positions.csv"
+DET_CSV = OUT_DIR / "detections.csv"     # one row per detected player
 ANCHOR_CACHE = OUT_DIR / "anchor_features.npz"
 
 REG_SCALE = 0.5            # register at half resolution
@@ -57,6 +58,47 @@ DET_IMGSZ = 1920
 from rugbyviz.pitch import MARGIN_X, MARGIN_Y_FAR, MARGIN_Y_NEAR, on_pitch, feet_of  # noqa: E402
 N_ANCHOR_TRIES = 3         # if the nearest anchor fails, try the next nearest
 CHECKPOINT_EVERY = 100
+
+
+def torso_chroma(img: np.ndarray, boxes: np.ndarray) -> np.ndarray:
+    """(N,3) lighting-normalised colour of each detection's torso.
+
+    Chromaticity -- each channel over total intensity -- divides out overall
+    brightness, so the same jersey in sun and in shadow land in the same place.
+    Absolute BGR does not, which is why hand-tuned thresholds on it returned
+    83% "dark" against 17% "red" for two teams of fifteen.
+    """
+    out = []
+    H, W = img.shape[:2]
+    for x1, y1, x2, y2 in boxes.astype(int):
+        h = y2 - y1
+        ty1, ty2 = max(0, y1 + int(0.20 * h)), min(H, y1 + int(0.55 * h))
+        tx1, tx2 = max(0, x1 + int(0.15 * (x2 - x1))), min(W, x2 - int(0.15 * (x2 - x1)))
+        p = img[ty1:max(ty1 + 1, ty2), tx1:max(tx1 + 1, tx2)].reshape(-1, 3).astype(np.float32)
+        if len(p) < 4:
+            out.append([1 / 3, 1 / 3, 1 / 3]); continue
+        med = np.median(p, axis=0)
+        out.append(med / max(med.sum(), 1e-6))
+    return np.array(out, np.float32)
+
+
+def kit_colours(img: np.ndarray, boxes: np.ndarray, centres: np.ndarray) -> list[str]:
+    """Nearest learned kit centroid for each detection.
+
+    Centroids come from tools/fit_kit_colours.py, which clusters torso colours
+    sampled across the whole match. Learned rather than hard-coded, so it
+    adapts to the light and works for a different strip next season.
+
+    Crude by design: a clustering aid, not a team classifier. A scrum hides
+    most of both jerseys and this will do poorly there, which is exactly the
+    situation the ruck/scrum work cares about -- so treat the labels as a hint
+    and never as ground truth.
+    """
+    if not len(boxes):
+        return []
+    X = torso_chroma(img, boxes)
+    d = ((X[:, None, :] - centres[None, :, :]) ** 2).sum(-1)
+    return ["red" if i == 0 else "dark" for i in np.argmin(d, axis=1)]
 
 
 def anchor_index(meta: dict) -> tuple[list[str], np.ndarray, dict]:
@@ -101,6 +143,11 @@ def main() -> None:
     cfg = json.loads(CONFIG.read_text())
     H_m2p = np.array(cfg["mosaic_to_pitch"])
     L, W = cfg["pitch_length_m"], cfg["pitch_width_m"]
+    if "kit_model" not in cfg:
+        raise SystemExit("no kit_model in config - run tools/fit_kit_colours.py first")
+    km = cfg["kit_model"]["centres"]
+    kit_centres = np.float32([km["red"], km["dark"]])
+    print(f"      kit centroids: red {km['red']}  dark {km['dark']}")
 
     names, times, homs = anchor_index(meta)
     print(f"[1/3] {len(names)} anchor frames spanning "
@@ -132,6 +179,12 @@ def main() -> None:
     if new:
         wr.writerow(["t", "reg_ok", "anchor", "inliers", "reg_err_px",
                      "n_det", "n_on_pitch", "play_x", "play_y", "spread_x", "spread_y"])
+
+    dnew = not DET_CSV.exists() or args.fresh
+    dfh = DET_CSV.open("w" if dnew else "a", newline="")
+    dwr = csv.writer(dfh)
+    if dnew:
+        dwr.writerow(["t", "x", "y", "kit", "box_h_px", "conf"])
 
     t0 = time.perf_counter()
     n_ok = n_fail = 0
@@ -182,11 +235,17 @@ def main() -> None:
 
         r = model.predict(frame, imgsz=DET_IMGSZ, conf=DET_CONF, classes=[0], verbose=False)[0]
         boxes = r.boxes.xyxy.cpu().numpy()
+        confs = r.boxes.conf.cpu().numpy()
         if len(boxes):
             P = cv2.perspectiveTransform(
                 feet_of(boxes).reshape(-1, 1, 2).astype(np.float64),
                 H_m2p @ H_f2m).reshape(-1, 2)
-            Q = P[on_pitch(P, L, W)]
+            keep = on_pitch(P, L, W)
+            Q = P[keep]
+            kits = kit_colours(frame, boxes[keep], kit_centres)
+            for (px_, py_), kit, bx, cf in zip(Q, kits, boxes[keep], confs[keep]):
+                dwr.writerow([f"{t:.3f}", f"{px_:.2f}", f"{py_:.2f}", kit,
+                              f"{bx[3]-bx[1]:.0f}", f"{cf:.3f}"])
         else:
             Q = np.empty((0, 2))
 
@@ -203,7 +262,7 @@ def main() -> None:
                      "" if sx is None else f"{sx:.2f}", "" if sy is None else f"{sy:.2f}"])
 
         if (i + 1) % CHECKPOINT_EVERY == 0:
-            fh.flush()
+            fh.flush(); dfh.flush()
             el = time.perf_counter() - t0
             rate = (i + 1) / el
             print(f"    {i+1}/{len(todo)}  t={t:7.1f}s  "
@@ -211,10 +270,11 @@ def main() -> None:
                   f"{rate:.1f} samples/s  eta {(len(todo)-i-1)/max(rate,1e-6)/60:.0f} min",
                   flush=True)
 
-    fh.close(); cap.release()
+    fh.close(); dfh.close(); cap.release()
     print(f"\ndone: {n_ok} registered, {n_fail} failed "
           f"({100*n_ok/max(1,n_ok+n_fail):.1f}% ok)")
     print(f"wrote {OUT_CSV}")
+    print(f"wrote {DET_CSV}")
 
 
 if __name__ == "__main__":
