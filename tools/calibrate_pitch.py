@@ -217,6 +217,10 @@ def main() -> None:
 
 
 def save(points, shape) -> bool:
+    if len(points) < 4:
+        print(f"  need at least 4 points to solve a homography, have {len(points)}")
+        return False
+
     src = np.float64([[p[0], p[1]] for p in points])   # mosaic pixels
     dst = np.float64([[p[3], p[4]] for p in points])   # pitch metres
 
