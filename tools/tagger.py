@@ -64,7 +64,15 @@ LINEOUT   start when the hooker THROWS, not when the ball went into touch.
 RUCK      start when the ball carrier is brought to ground and the contest
           forms; end at ball out -- the 9's hands on the ball is a workable
           convention. Pick one and stay with it.
-PENALTY   tag at the WHISTLE, i.e. when the referee stops play. The dead time
+PENALTY   tag at the WHISTLE, i.e. when the referee stops play. If a ruck,
+          scrum, lineout or maul was still open, just press 7 -- it is closed
+          automatically and recorded as e.g. ruck_end_penalty. Do NOT press e
+          first: a ruck ended by a penalty never produced ball, and filing it
+          as a plain ruck_out would enter it into ruck-speed statistics as a
+          ruck that delivered in N seconds when it delivered nothing.
+          A try (6) closes an open contest the same way.
+          Kicks do NOT auto-close: a kick implies the ball was already out, so
+          press e for the ball-out first, then the kick. The dead time
           then runs from the whistle to whatever restarts play: the scrum
           feed, the lineout throw, or the kick at posts. Consistent with the
           set-piece rule above, since all three are tagged at the restart.
@@ -137,6 +145,27 @@ SKIP_S = 3.0
 OPENING = {"scrum", "lineout", "ruck_start", "stoppage_start", "huddle"}
 CLOSERS = {"ruck_start": "ruck_out", "stoppage_start": "stoppage_end"}
 
+# Events that terminate an open contest by themselves. Pressing one of these
+# closes whatever is open AND records why, because a ruck ended by a penalty
+# never produced ball: filing it as a plain ruck_out would enter it into
+# ruck-speed statistics as a ruck that took N seconds to deliver, when it
+# delivered nothing. Kicks are deliberately NOT here -- a kick implies the ball
+# was already out, so the ruck ended before it, and auto-closing at the kick
+# would overstate the duration.
+TERMINATORS = {"penalty", "try"}
+
+
+def base_of(opener: str) -> str:
+    return opener[:-6] if opener.endswith("_start") else opener
+
+
+def closes_what(ev: str) -> str | None:
+    """Which opener, if any, this event closes."""
+    for op in OPENING:
+        if ev in (f"end_{op}", CLOSERS.get(op)) or            ev in {f"{base_of(op)}_end_{r}" for r in TERMINATORS}:
+            return op
+    return None
+
 # Rows of (key, label) drawn along the bottom. Pairs that open and close
 # something are kept adjacent so the relationship is visible at a glance.
 LEGEND = [
@@ -160,12 +189,11 @@ def still_open(tags: list[tuple[float, str]]) -> list[str]:
     'e' should say so rather than close the scrum a second time.
     """
     stack: list[str] = []
-    closes = {v: k for k, v in CLOSERS.items()}
     for _, ev in sorted(tags, key=lambda r: r[0]):
         if ev in OPENING:
             stack.append(ev)
         else:
-            want = ev[4:] if ev.startswith("end_") else closes.get(ev)
+            want = closes_what(ev)
             if want and want in stack:
                 for i in range(len(stack) - 1, -1, -1):
                     if stack[i] == want:
@@ -533,6 +561,13 @@ class Tagger:
             self.dirty = True
             self.msg = f"+ {name} @ {fmt(t)}"
             print(f"  {self.msg}")
+            # A penalty or a try ends any contest that was still open.
+            if name in TERMINATORS:
+                for op in reversed(still_open(self.tags)):
+                    closer = f"{base_of(op)}_end_{name}"
+                    self.tags.append((t, closer))
+                    print(f"  + {closer} @ {fmt(t)}  (closed by {name})")
+                    self.msg = f"+ {name}, closed {base_of(op)}"
             if len(self.tags) % 20 == 0:
                 self.save()
         return True

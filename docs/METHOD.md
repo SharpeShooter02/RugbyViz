@@ -161,7 +161,7 @@ downstream number means.
 | scrum | the 9 **feeds** the ball | ball leaves (8 picks up / 9 clears) |
 | lineout | the hooker **throws** | ball won and cleared |
 | ruck | contest forms on the ground | ball out (9's hands on it) |
-| penalty | the referee's **whistle** | — (dead time runs to the restart) |
+| penalty | the referee's **whistle** | closes any open contest automatically |
 | try | grounding | — (dead ball runs to next `kickoff`) |
 
 Set pieces are tagged at the restart rather than the whistle because:
@@ -173,6 +173,20 @@ Set pieces are tagged at the restart rather than the whistle because:
 Penalties are tagged at the whistle, so dead time runs from the whistle to
 whatever restarts play — scrum feed, lineout throw, or kick at posts. This is
 consistent, since all three restarts are themselves tagged at the restart.
+
+### Contests ended by a penalty or a try
+
+Press `7` or `6` alone; do not press `e` first. The tagger closes whatever was
+open and records the reason — `ruck_end_penalty`, `scrum_end_try` — rather than
+a plain `ruck_out`.
+
+This is not cosmetic. **A ruck ended by a penalty never produced ball.** Filing
+it as `ruck_out` would enter it into ruck-speed statistics as a ruck that
+delivered in N seconds when it delivered nothing, biasing the metric that
+matters most.
+
+Kicks deliberately do **not** auto-close: a kick implies the ball was already
+out, so the contest ended before it. Press `e` for the ball-out, then the kick.
 
 `8`/`9` stoppage tags are for the **exceptional** only — injuries, long delays,
 cards. Routine dead time is implied by the gaps between events.
