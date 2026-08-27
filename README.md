@@ -40,6 +40,13 @@ classical geometry.
   hence the one-time manual calibration.
 - No ground-truth stats exist yet for any match. This is the biggest open risk.
 
+## Documentation
+
+- **`docs/METHOD.md`** — how the system works, every design decision and why,
+  tagging conventions, and what is validated versus assumed. Read this first;
+  add to it when a decision is made.
+- `docs/findings.md` — experiment results and measurements.
+
 ## Layout
 
 ```

@@ -64,6 +64,10 @@ LINEOUT   start when the hooker THROWS, not when the ball went into touch.
 RUCK      start when the ball carrier is brought to ground and the contest
           forms; end at ball out -- the 9's hands on the ball is a workable
           convention. Pick one and stay with it.
+PENALTY   tag at the WHISTLE, i.e. when the referee stops play. The dead time
+          then runs from the whistle to whatever restarts play: the scrum
+          feed, the lineout throw, or the kick at posts. Consistent with the
+          set-piece rule above, since all three are tagged at the restart.
 
 Why the feed and the throw rather than the whistle:
 
