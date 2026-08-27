@@ -43,19 +43,29 @@ MATCH = "a-side-vs-msu-2025-09-13"
 PITCH_LENGTH = 100.0   # try line to try line
 PITCH_WIDTH = 70.0
 
-# (label, x_metres, y_metres). Ordered most-reliable first so that if you can
-# only place a few, the ones you place are the well-conditioned ones.
+POST_HALF_GAP = 2.8    # rugby posts stand 5.6 m apart, centred on the width
+
+# (label, x_metres, y_metres). Ordered most-reliable first, so if you only
+# place a few, the ones you place are the well-conditioned ones.
+#
+# Goalpost bases are the best landmarks available on this pitch: rigid,
+# precisely positioned, and sitting exactly on the try line. Painted lines on
+# an unmarked club field are faint and drift; a post does not.
 LANDMARKS = [
     ("halfway  x  FAR touchline", 50.0, 0.0),
     ("halfway  x  NEAR touchline", 50.0, PITCH_WIDTH),
-    ("LEFT 22  x  FAR touchline", 22.0, 0.0),
-    ("LEFT 22  x  NEAR touchline", 22.0, PITCH_WIDTH),
+    ("RIGHT goalpost - FAR-side post base", PITCH_LENGTH, PITCH_WIDTH / 2 - POST_HALF_GAP),
+    ("RIGHT goalpost - NEAR-side post base", PITCH_LENGTH, PITCH_WIDTH / 2 + POST_HALF_GAP),
+    ("LEFT goalpost - FAR-side post base", 0.0, PITCH_WIDTH / 2 - POST_HALF_GAP),
+    ("LEFT goalpost - NEAR-side post base", 0.0, PITCH_WIDTH / 2 + POST_HALF_GAP),
     ("RIGHT 22 x  FAR touchline", 78.0, 0.0),
     ("RIGHT 22 x  NEAR touchline", 78.0, PITCH_WIDTH),
-    ("LEFT try line  x  FAR touchline", 0.0, 0.0),
-    ("LEFT try line  x  NEAR touchline", 0.0, PITCH_WIDTH),
-    ("RIGHT try line x  FAR touchline", PITCH_LENGTH, 0.0),
-    ("RIGHT try line x  NEAR touchline", PITCH_LENGTH, PITCH_WIDTH),
+    ("LEFT 22  x  FAR touchline", 22.0, 0.0),
+    ("LEFT 22  x  NEAR touchline", 22.0, PITCH_WIDTH),
+    ("RIGHT corner flag - FAR side", PITCH_LENGTH, 0.0),
+    ("RIGHT corner flag - NEAR side", PITCH_LENGTH, PITCH_WIDTH),
+    ("LEFT corner flag - FAR side", 0.0, 0.0),
+    ("LEFT corner flag - NEAR side", 0.0, PITCH_WIDTH),
 ]
 
 WIN = "calibrate pitch  |  click landmark, scroll=zoom, right-drag=pan, u=undo, n=skip, s=save, q=quit"
