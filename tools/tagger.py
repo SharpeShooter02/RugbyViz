@@ -23,6 +23,7 @@ VIEW
     scroll       zoom in / out toward the cursor
     right-drag   pan
     r            reset zoom and pan
+    l            show / hide the tag list panel
 
 TAGGING            press once at the moment the event happens
     1  scrum            6  try
@@ -103,7 +104,8 @@ LEGEND = [
     [("5", "kick in play"), ("t", "kick to touch"), ("p", "kick at posts"),
      ("u", "undo"), ("w", "save"), ("g", "go to time")],
     [("space", "play/pause"), ("a/d", "1s"), ("A/D", "10s"), ("z/c", "60s"),
-     ("-/=", "speed"), ("f", "fullscreen"), ("scroll", "zoom"), ("r", "reset view")],
+     ("-/=", "speed"), ("f", "fullscreen"), ("scroll", "zoom"), ("r", "reset view"),
+     ("l", "tag list")],
 ]
 
 
@@ -170,6 +172,7 @@ class Tagger:
         self.cx, self.cy = self.src_w / 2, self.src_h / 2
         self.dragging = False
         self.drag_from = (0, 0)
+        self.show_list = True
 
         self.tags: list[tuple[float, str]] = []
         self.load()
@@ -297,6 +300,9 @@ class Tagger:
         px = 12 + int(span * t / self.dur)
         cv2.line(canvas, (px, y0 - 4), (px, y0 + 18), (255, 255, 255), 2)
 
+        if self.show_list:
+            self.draw_tag_list(canvas, t)
+
         # key panel
         yy = y0 + 34
         for row in LEGEND:
@@ -312,6 +318,52 @@ class Tagger:
                 xx += 8 * len(label) + 22
             yy += 22
         return canvas
+
+    def draw_tag_list(self, canvas: np.ndarray, t: float) -> None:
+        """Tags around the playhead, so what has been marked is always visible.
+
+        Windowed on the current time rather than showing the last N entered:
+        after scrubbing backwards to re-check a passage, the useful question is
+        "what did I tag HERE", not "what did I press most recently".
+        """
+        PW, ROWS = 330, 16
+        x0 = self.view_w - PW - 12
+        y0, rh = 52, 21
+        h = 34 + ROWS * rh
+
+        panel = canvas[y0:y0 + h, x0:x0 + PW]
+        cv2.addWeighted(panel, 0.25, np.zeros_like(panel), 0.75, 0, panel)
+        cv2.rectangle(canvas, (x0, y0), (x0 + PW, y0 + h), (90, 90, 90), 1)
+
+        tags = sorted(self.tags, key=lambda r: r[0])
+        cv2.putText(canvas, f"TAGS  {len(tags)} total   [l] hide",
+                    (x0 + 10, y0 + 20), cv2.FONT_HERSHEY_SIMPLEX, 0.48,
+                    (220, 220, 220), 1)
+
+        if not tags:
+            cv2.putText(canvas, "nothing tagged yet", (x0 + 10, y0 + 46),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.46, (140, 140, 140), 1)
+            return
+
+        # centre the window on the playhead
+        after = sum(1 for tt, _ in tags if tt < t)
+        start = int(np.clip(after - ROWS // 2, 0, max(0, len(tags) - ROWS)))
+        for i, (tt, ev) in enumerate(tags[start:start + ROWS]):
+            yy = y0 + 42 + i * rh
+            near = abs(tt - t) < 1.0
+            col = EVENTS_BY_NAME.get(ev.replace("end_", ""), (190, 190, 190))
+            if near:
+                cv2.rectangle(canvas, (x0 + 4, yy - 13), (x0 + PW - 4, yy + 5),
+                              (60, 60, 60), -1)
+            cv2.putText(canvas, f"{start+i+1:>3} {fmt(tt)}", (x0 + 10, yy),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.45,
+                        (255, 255, 255) if near else (150, 150, 150), 1)
+            cv2.putText(canvas, ev, (x0 + 132, yy), cv2.FONT_HERSHEY_SIMPLEX,
+                        0.45, col, 2 if near else 1)
+        if start + ROWS < len(tags):
+            cv2.putText(canvas, f"+{len(tags)-start-ROWS} more below",
+                        (x0 + 10, y0 + h - 6), cv2.FONT_HERSHEY_SIMPLEX,
+                        0.4, (120, 120, 120), 1)
 
     # -- main loop --------------------------------------------------------
     def run(self) -> None:
@@ -364,6 +416,9 @@ class Tagger:
                 self.view_h = int(self.view_w * self.src_h / self.src_w)
                 cv2.setWindowProperty(win, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_NORMAL)
                 cv2.resizeWindow(win, self.view_w, self.view_h + BAR_H)
+        elif k == ord("l"):
+            self.show_list = not self.show_list
+            self.msg = f"tag list {'shown' if self.show_list else 'hidden'}"
         elif k == ord("r"):
             self.zoom = 1.0
             self.cx, self.cy = self.src_w / 2, self.src_h / 2
