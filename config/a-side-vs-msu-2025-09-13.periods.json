@@ -1,0 +1,38 @@
+{
+  "window_s": 150.0,
+  "move_threshold_m": 4.0,
+  "periods": [
+    {
+      "index": 1,
+      "start_s": 0.0,
+      "end_s": 2758.5,
+      "start_min": 0.0,
+      "end_min": 45.98
+    },
+    {
+      "index": 2,
+      "start_s": 2848.0,
+      "end_s": 4052.0,
+      "start_min": 47.47,
+      "end_min": 67.53
+    },
+    {
+      "index": 3,
+      "start_s": 4193.5,
+      "end_s": 5761.5,
+      "start_min": 69.89,
+      "end_min": 96.02
+    }
+  ],
+  "breaks": [
+    {
+      "start_s": 2759.0,
+      "end_s": 2847.5
+    },
+    {
+      "start_s": 4052.5,
+      "end_s": 4193.0
+    }
+  ],
+  "verified_by_human": false
+}
