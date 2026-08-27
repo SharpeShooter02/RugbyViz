@@ -45,27 +45,64 @@ PITCH_WIDTH = 70.0
 
 POST_HALF_GAP = 2.8    # rugby posts stand 5.6 m apart, centred on the width
 
-# (label, x_metres, y_metres). Ordered most-reliable first, so if you only
-# place a few, the ones you place are the well-conditioned ones.
+# The Veo camera sits on the near touchline near halfway, so it cannot see the
+# near touchline underneath itself. Landmarks are therefore chosen to give
+# spread in y WITHOUT relying on the near touchline:
 #
-# Goalpost bases are the best landmarks available on this pitch: rigid,
-# precisely positioned, and sitting exactly on the try line. Painted lines on
-# an unmarked club field are faint and drift; a post does not.
+#   y =  0    far touchline                      (visible along its length)
+#   y =  5    far 5m dashed line                 (parallel to the touchline)
+#   y = 15    far 15m dashed line                        "
+#   y = 32.2  far-side goalpost base
+#   y = 37.8  near-side goalpost base
+#   y = 55    near 15m dashed line               (visible at oblique angle)
+#   y = 70    near touchline                     (mostly NOT visible)
+#
+# The "+" cross marks visible on the pitch are exactly where those dashed
+# lines cross the 22s, the 10m lines and halfway. Each is a precise point.
+#
+# Ordered most-reliable first, so a partial session still yields good points.
+FAR_5, FAR_15, NEAR_15, NEAR_5 = 5.0, 15.0, 55.0, 65.0
+POST_FAR = PITCH_WIDTH / 2 - POST_HALF_GAP      # 32.2
+POST_NEAR = PITCH_WIDTH / 2 + POST_HALF_GAP     # 37.8
+
 LANDMARKS = [
+    # -- goalposts: rigid, unambiguous, and the only easy mid-width points ----
+    ("RIGHT goalpost - FAR-side post base", PITCH_LENGTH, POST_FAR),
+    ("RIGHT goalpost - NEAR-side post base", PITCH_LENGTH, POST_NEAR),
+    ("LEFT goalpost - FAR-side post base", 0.0, POST_FAR),
+    ("LEFT goalpost - NEAR-side post base", 0.0, POST_NEAR),
+
+    # -- far touchline: the one line visible end to end --------------------
     ("halfway  x  FAR touchline", 50.0, 0.0),
-    ("halfway  x  NEAR touchline", 50.0, PITCH_WIDTH),
-    ("RIGHT goalpost - FAR-side post base", PITCH_LENGTH, PITCH_WIDTH / 2 - POST_HALF_GAP),
-    ("RIGHT goalpost - NEAR-side post base", PITCH_LENGTH, PITCH_WIDTH / 2 + POST_HALF_GAP),
-    ("LEFT goalpost - FAR-side post base", 0.0, PITCH_WIDTH / 2 - POST_HALF_GAP),
-    ("LEFT goalpost - NEAR-side post base", 0.0, PITCH_WIDTH / 2 + POST_HALF_GAP),
-    ("RIGHT 22 x  FAR touchline", 78.0, 0.0),
-    ("RIGHT 22 x  NEAR touchline", 78.0, PITCH_WIDTH),
     ("LEFT 22  x  FAR touchline", 22.0, 0.0),
-    ("LEFT 22  x  NEAR touchline", 22.0, PITCH_WIDTH),
-    ("RIGHT corner flag - FAR side", PITCH_LENGTH, 0.0),
-    ("RIGHT corner flag - NEAR side", PITCH_LENGTH, PITCH_WIDTH),
+    ("RIGHT 22 x  FAR touchline", 78.0, 0.0),
+
+    # -- cross marks: dashed 15m line crossing the big lines ---------------
+    ("halfway  x  FAR 15m dashed line", 50.0, FAR_15),
+    ("LEFT 22  x  FAR 15m dashed line", 22.0, FAR_15),
+    ("RIGHT 22 x  FAR 15m dashed line", 78.0, FAR_15),
+
+    # -- cross marks: dashed 5m line ---------------------------------------
+    ("halfway  x  FAR 5m dashed line", 50.0, FAR_5),
+    ("LEFT 22  x  FAR 5m dashed line", 22.0, FAR_5),
+    ("RIGHT 22 x  FAR 5m dashed line", 78.0, FAR_5),
+
+    # -- 10m lines (dashed, 10m either side of halfway) --------------------
+    ("LEFT 10m x  FAR touchline", 40.0, 0.0),
+    ("RIGHT 10m x  FAR touchline", 60.0, 0.0),
+
+    # -- corners and try lines ---------------------------------------------
     ("LEFT corner flag - FAR side", 0.0, 0.0),
+    ("RIGHT corner flag - FAR side", PITCH_LENGTH, 0.0),
+
+    # -- near side: rare and precious. Any one of these is worth a lot ------
+    ("LEFT 22  x  NEAR 15m dashed line", 22.0, NEAR_15),
+    ("RIGHT 22 x  NEAR 15m dashed line", 78.0, NEAR_15),
+    ("halfway  x  NEAR 15m dashed line", 50.0, NEAR_15),
+    ("LEFT 22  x  NEAR touchline", 22.0, PITCH_WIDTH),
+    ("RIGHT 22 x  NEAR touchline", 78.0, PITCH_WIDTH),
     ("LEFT corner flag - NEAR side", 0.0, PITCH_WIDTH),
+    ("RIGHT corner flag - NEAR side", PITCH_LENGTH, PITCH_WIDTH),
 ]
 
 WIN = "calibrate pitch  |  click landmark, scroll=zoom, right-drag=pan, u=undo, n=skip, s=save, q=quit"
@@ -245,6 +282,30 @@ def save(points, shape) -> bool:
     if np.median(err) > 3.0:
         print("  WARNING: median residual > 3 m. Points are probably mislabelled -")
         print("           check you did not swap FAR and NEAR touchlines.")
+
+    # Spread across the pitch WIDTH is the weak axis with this camera: the near
+    # touchline is hidden under the camera, so points tend to pile onto the far
+    # touchline. Points along a single line cannot determine a homography, and
+    # a narrow band determines it only near that band -- everything else is
+    # extrapolation, which degrades fast.
+    y_used = dst[:, 1]
+    y_span = float(y_used.max() - y_used.min())
+    x_span = float(dst[:, 0].max() - dst[:, 0].min())
+    print(f"\n  coverage: x span {x_span:.0f} m of {PITCH_LENGTH:.0f}, "
+          f"y span {y_span:.0f} m of {PITCH_WIDTH:.0f}")
+    print(f"  distinct y values: {sorted(set(np.round(y_used, 1)))}")
+    if len(set(np.round(y_used, 1))) < 2:
+        print("  ERROR: every point is on one line across the pitch. A homography")
+        print("         cannot be solved from collinear points - the result is")
+        print("         meaningless. You need points at a second distance from")
+        print("         the far touchline (goalpost bases are the easiest).")
+    elif y_span < 20:
+        print(f"  WARNING: only {y_span:.0f} m of width covered. Positions near the")
+        print("           near touchline will be extrapolated and may be off by")
+        print("           many metres. Add goalpost bases or any near-side point.")
+    if x_span < 40:
+        print(f"  WARNING: only {x_span:.0f} m of length covered - same problem along"
+              " the pitch.")
 
     CONFIG_DIR.mkdir(exist_ok=True)
     out = CONFIG_DIR / f"{MATCH}.json"
