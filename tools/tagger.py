@@ -29,6 +29,7 @@ TAGGING            press once at the moment the event happens
     2  lineout          7  penalty / free kick
     3  ruck start       8  stoppage START
     4  ruck ball out    9  stoppage END
+       (4 and 9 are aliases -- 'e' ends whichever of these is open)
 
     5  kick in open play      (play continues)
     t  kick to touch          (play stops, lineout follows)
@@ -38,7 +39,10 @@ TAGGING            press once at the moment the event happens
     k  kickoff / restart      TAG THIS AFTER EVERY TRY -- the span from a try
                               to the next restart is dead time and would
                               otherwise be credited as attacking territory.
-    e  END of whatever is open (scrum / lineout / stoppage / huddle)
+    e  END of whatever is open -- ruck, scrum, lineout, stoppage or huddle.
+       One key for every ending. It writes the proper event name for what it
+       closed (a ruck ends as ruck_out), and the OPEN indicator top-right
+       always shows what 'e' would close next.
 
     u            undo last tag
     w            write tags to disk (also autosaves every 20 tags)
@@ -92,12 +96,12 @@ CLOSERS = {"ruck_start": "ruck_out", "stoppage_start": "stoppage_end"}
 # Rows of (key, label) drawn along the bottom. Pairs that open and close
 # something are kept adjacent so the relationship is visible at a glance.
 LEGEND = [
-    [("1", "scrum"), ("e", "end scrum"), ("2", "lineout"), ("e", "end lineout"),
-     ("3", "RUCK start"), ("4", "RUCK ball out")],
-    [("8", "stoppage start"), ("9", "stoppage end"), ("h", "huddle"), ("e", "end huddle"),
-     ("6", "try"), ("k", "kickoff/restart")],
+    [("3", "RUCK start"), ("e", "END  <- ends whatever is open"),
+     ("1", "scrum"), ("2", "lineout"), ("h", "huddle"), ("8", "stoppage")],
+    [("6", "try"), ("k", "kickoff/restart"), ("7", "penalty"),
+     ("4", "ruck ball out (same as e)"), ("9", "stoppage end (same as e)")],
     [("5", "kick in play"), ("t", "kick to touch"), ("p", "kick at posts"),
-     ("7", "penalty"), ("u", "undo"), ("w", "save")],
+     ("u", "undo"), ("w", "save"), ("g", "go to time")],
     [("space", "play/pause"), ("a/d", "1s"), ("A/D", "10s"), ("z/c", "60s"),
      ("-/=", "speed"), ("f", "fullscreen"), ("scroll", "zoom"), ("r", "reset view")],
 ]
@@ -409,7 +413,12 @@ class Tagger:
                     self.msg = "nothing open to end"
                     print(f"  {self.msg}")
                     return True
-                name = f"end_{open_now[-1]}"
+                # Use the canonical closer where one exists, so 'e' on a ruck
+                # writes ruck_out -- the same value key 4 writes, and the name
+                # everything downstream expects. One key to end anything, but
+                # the stored event still says what actually happened.
+                opener = open_now[-1]
+                name = CLOSERS.get(opener, f"end_{opener}")
             self.tags.append((t, name))
             self.dirty = True
             self.msg = f"+ {name} @ {fmt(t)}"
